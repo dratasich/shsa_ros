@@ -1,0 +1,9 @@
+# goal
+string topic            # specify the topic to substitute
+---
+# result
+string node             # name of the transfer function node
+---
+# feedback message
+bool found              # found a substitute?
+float32 utility         # confidence of the current substitution
