@@ -1,10 +1,9 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(shsa)
+project(shsa_ros)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
   rospy
-  actionlib
   actionlib_msgs
   message_generation
 )
@@ -42,7 +41,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES shsa
-  CATKIN_DEPENDS message_runtime actionlib_msgs
+  CATKIN_DEPENDS actionlib_msgs message_runtime
 #  DEPENDS system_lib
 )
 
