@@ -13,6 +13,8 @@ Set parameters ~model (SHSA model) and ~map (variable to topic mapping).
 import sys
 import argparse
 import yaml
+import subprocess
+import networkx as nx
 
 import roslib
 import rospy
@@ -42,7 +44,7 @@ class Map(object):
                 raise RuntimeError("""Failed to read map config
                 ({}). {}""".format(configfile, e))
         # make map bi-directional (reversed duplicate)
-        for k,v in datacpy.items():
+        for k, v in datacpy.items():
             self.__data[v] = k
 
     def topic(self, variable):
@@ -60,29 +62,72 @@ class SubstituteServer(object):
         """Mapping ROS topics to SHSA model variables."""
         self.__tnn = 0
         """ID of next transfer node, or number of transfer nodes created."""
-        self.__server = actionlib.SimpleActionServer('substitute',
-                                                     shsa_ros.msg.SubstituteAction,
-                                                     self.execute, False)
+        self.__server = actionlib.SimpleActionServer(
+            'substitute', shsa_ros.msg.SubstituteAction, self.execute, False)
         self.__server.start()
         # prepare result message
         self.__result = shsa_ros.msg.SubstituteResult()
         """Result message, if the substitution succeeds."""
 
+    def __gen_code(self, s):
+        """Generates arguments for the transfer node.
+
+        Returns the input/output topics and the python code to execute. The
+        transfer node executes the code in the form of "y=x". Whereas x is a
+        vector of values received from the input topics incl. field, and y is
+        the scalar value of the output topic incl. field.
+
+        """
+        # dfs of substitution tree
+        t, vin = s.tree(collapse_variables=False)
+        postorder = nx.dfs_postorder_nodes(t)
+        inputs = []
+        code = "\n"
+        output = self.__map.topic(s.root)
+        # read input
+        for n in vin:
+            code += n + " = x[" + str(len(inputs)) + "]\n"
+            inputs.append(self.__map.topic(n))
+        code += "\n"
+        # execute functions
+        for n in postorder:
+            if s.model.is_relation(n):
+                # I/O variables of relation
+                iv = ",".join(t.predecessors(n))  # input
+                ov = t.successors(n)[0]  # output
+                # define relation as function
+                code += "def " + n + "(" + iv + "):\n"
+                code += "    return (" \
+                        + s.model.property_value_of(n, 'fct')[ov] \
+                        + ")\n\n"
+                # execute relation
+                code += ov + " = " + n + "(" + iv + ")\n\n"
+        # set output
+        code += "y = " + s.root  # assign output
+        # set period from shsa model
+        p = s.model.property_value_of(s.root, 'pubrate')
+        return ",".join(inputs), code, output, p
+
     def __start_transfer_node(self, s):
+        """Creates and starts the transfer node."""
         if s is None or len(s) == 0:
             raise RuntimeError("""Substitution result empty.""")
         rospy.logdebug("create transfer node for {}".format(s))
-        # todo: gather input, code, output
         # cmd
         node_name = "transfer_node_{}".format(self.__tnn)
-        cmd = "rosrun dynamic_reconfiguration transfer_function_node.py"
+        # call node
+        cmd = "rosrun shsa_ros transfer_function_node.py"
         # special keyword/argument for ros to set node name
         cmd += " __name:={}".format(node_name)
-        # 3 positional arguments for x, code and y
-	# cmd += " -i {}".format("x")
-	# cmd += " -c {}".format("y=x")
-	# cmd += " -o {}".format("y")
-        # todo: start node
+        # arguments for inputs, code, outputs, period
+        i, c, o, p = self.__gen_code(s)
+        cmd += " -p {}".format(p)
+        cmd += " -i \"{}\"".format(i)
+        cmd += " -c \"{}\"".format(c)
+        cmd += " -o \"{}\"".format(o)
+        rospy.logdebug("run transfer node:\n{}".format(cmd))
+        # start node
+        subprocess.Popen(cmd, shell=True)
         self.__tnn += 1
         return node_name
 
