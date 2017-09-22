@@ -1,0 +1,89 @@
+#
+# SHSA model of mobile robot (daisy).
+#
+# 2017-09-20
+# Denise Ratasich
+#
+
+# generate graph from given relations; edges are generated depending on the
+# outputs/functions defined here
+relations:
+  tdl:
+    dmin:
+      in: [laser_points]
+      fct: "min(laser_points)"
+  tds:
+    dmin:
+      in: [sonar_ranges]
+      fct: "min(sonar_ranges)"
+  tdb:
+    dmin:
+      in: [bumper_states]
+      fct: "boolean_and(bumper_states) * FLOAT_MAX"
+  tdm:
+    dmin:
+      in: [position, map]
+      fct: "map(position)"
+    position:
+      in: [dmin, map]
+      fct: "map(dmin)"
+  tda:
+    dmin:
+      in: [motor_current, current_threshold]
+      fct: "(motor_current < threshold) * FLOAT_MAX"
+  tlb:
+    bumper_states:
+      in: [laser_points, bumper_threshold]
+      fct: "min(laser_points[a:b]) < threshold"
+  tba:
+    motor_current:
+      in: [bumper_states]
+      fct: "!boolean_and(bumper_states) * CURRENT_MAX"
+
+# node type: 0..variable, 1..relation
+# (must match enum in shsamodel.py)
+properties:
+
+  # type will be added (w.r.t. 'relations' given above)
+  # fct will be added (w.r.t. 'relations' given above)
+
+  description:
+    dmin: "minimum distance to obstacle"
+    laser_points: "laser point cloud"
+    sonar_ranges: "sonar ranges"
+    bumper_states: "bumper states"
+    map: "map of the environment"
+    position: "position of the rover in the environment"
+    motor_current: "current / power consumption of motors"
+    tdl: "dmin = min(laser_points)"
+    tds: "dmin = min(sonar_points)"
+    tdb: "dmin = boolean_and(bumper_states) * FLOAT_MAX"
+    tdm: "dmin = map(position) ; position = map(dmin)"
+    tda: "dmin = (motor_current < threshold) * FLOAT_MAX"
+    tlb: "bumper_states[c] = min(laser_points[a:b]) < threshold"
+    tba: "current = !boolean_and(bumper_states) * CURRENT_MAX"
+
+  # set provision (list of services) or provided (bool, default: False)
+  # needed by ROS package (use provision instead of provided)
+  provision:
+    dmin: []
+    laser_points: ["/scan"]
+    sonar_ranges: ["/p2os/sonar"]
+    bumper_states: ["/p2os/bumper"]
+    map: ["/map"]
+    position: ["/p2os/odom/pose"]
+    motor_current: ["/uc/adc/a0"]
+
+  # constants where no topic is available for publishing the value
+  # needed by ROS package (otherwise a topic has to be provided for constants)
+  constant:
+    current_threshold: 2
+    bumper_threshold: 0.5
+
+  # set need (variables that are needed or shared by components)
+  # needed by ROS package (to resolve variable of topics to substitute)
+  need:
+    dmin: ["/dmin"]
+
+  pubrate:
+    dmin: 0.1

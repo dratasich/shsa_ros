@@ -1,0 +1,7 @@
+<launch>
+  <arg name="modelfile" default="$(find shsa_ros)/config/rover.yaml" />
+
+  <node name="shsa" pkg="shsa_ros" type="shsa_node.py">
+    <param name="model" value="$(arg modelfile)" />
+  </node>
+</launch>

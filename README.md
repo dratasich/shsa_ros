@@ -16,7 +16,7 @@ Self-Healing by Structural Adaptation (SHSA) for the Robot Operating System
 
 Execute SHSA node:
 ```bash
-rosrun shsa_ros shsa_node.py _model:=/path/to/shsa-model.yaml _map:=/path/to/variable-topic-mapping.yaml &
+rosrun shsa_ros shsa_node.py _model:=/path/to/shsa-model.yaml &
 ```
 
 Substitute a topic (send a goal, i.e., trigger an action of the SHSA node):
