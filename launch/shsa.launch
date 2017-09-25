@@ -1,7 +1,11 @@
 <launch>
   <arg name="modelfile" default="$(find shsa_ros)/config/rover.yaml" />
 
-  <node name="shsa" pkg="shsa_ros" type="shsa_node.py">
+  <node name="shsa" pkg="shsa_ros" type="shsa_node.py" output="screen">
+    <param name="model" value="$(arg modelfile)" />
+  </node>
+  <node name="dmin_monitor" pkg="shsa_ros" type="monitor_node.py"
+        output="screen">
     <param name="model" value="$(arg modelfile)" />
   </node>
 </launch>

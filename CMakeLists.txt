@@ -39,7 +39,7 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
+  INCLUDE_DIRS
 #  LIBRARIES shsa
   CATKIN_DEPENDS actionlib_msgs message_runtime
 #  DEPENDS system_lib
@@ -52,13 +52,14 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
+  # include
   ${catkin_INCLUDE_DIRS}
 )
 
 ## python executables
 # shsa_node.py
 # transfer_function_node.py
+# monitor_node.py
 
 #############
 ## Install ##
@@ -73,5 +74,12 @@ install(TARGETS
 catkin_install_python(PROGRAMS
   src/shsa_node.py
   src/transfer_function_node.py
+  src/monitor_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+install(DIRECTORY launch/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch)
+
+install(DIRECTORY config/
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/config)

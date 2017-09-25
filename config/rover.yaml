@@ -10,80 +10,110 @@
 relations:
   tdl:
     dmin:
-      in: [laser_points]
-      fct: "min(laser_points)"
+      in: [laser]
+      fct: "min(laser)"
   tds:
     dmin:
-      in: [sonar_ranges]
-      fct: "min(sonar_ranges)"
+      in: [sonar]
+      fct: "min(sonar)"
   tdb:
     dmin:
-      in: [bumper_states]
-      fct: "boolean_and(bumper_states) * FLOAT_MAX"
+      in: [bumper]
+      fct: "boolean_and(bumper) * FLOAT_MAX"
   tdm:
     dmin:
       in: [position, map]
       fct: "map(position)"
-    position:
-      in: [dmin, map]
-      fct: "map(dmin)"
   tda:
     dmin:
-      in: [motor_current, current_threshold]
-      fct: "(motor_current < threshold) * FLOAT_MAX"
-  tlb:
-    bumper_states:
-      in: [laser_points, bumper_threshold]
-      fct: "min(laser_points[a:b]) < threshold"
-  tba:
-    motor_current:
-      in: [bumper_states]
-      fct: "!boolean_and(bumper_states) * CURRENT_MAX"
+      in: [current, velocity]
+      fct: "1 - int(current > velocity)"
+  tpv:
+    velocity:
+      in: [position]
+      fct: "d position / dt"
 
-# node type: 0..variable, 1..relation
-# (must match enum in shsamodel.py)
+
+# node properties
+# - type: 0..variable, 1..relation (must match enum in shsamodel.py)
+# - fct: relation has a function for code generation
+# - provision: topics that provide this variable
+# - constant: marks nodes as constants and specifies this value
 properties:
 
   # type will be added (w.r.t. 'relations' given above)
   # fct will be added (w.r.t. 'relations' given above)
 
-  description:
-    dmin: "minimum distance to obstacle"
-    laser_points: "laser point cloud"
-    sonar_ranges: "sonar ranges"
-    bumper_states: "bumper states"
-    map: "map of the environment"
-    position: "position of the rover in the environment"
-    motor_current: "current / power consumption of motors"
-    tdl: "dmin = min(laser_points)"
-    tds: "dmin = min(sonar_points)"
-    tdb: "dmin = boolean_and(bumper_states) * FLOAT_MAX"
-    tdm: "dmin = map(position) ; position = map(dmin)"
-    tda: "dmin = (motor_current < threshold) * FLOAT_MAX"
-    tlb: "bumper_states[c] = min(laser_points[a:b]) < threshold"
-    tba: "current = !boolean_and(bumper_states) * CURRENT_MAX"
+  # If you use the model for a ROS application a full variable-to-topic mapping
+  # is needed (by shsa_node.py of shsa_ros)! Specify: provision, constant,
+  # need.
 
   # set provision (list of services) or provided (bool, default: False)
   # needed by ROS package (use provision instead of provided)
   provision:
-    dmin: []
-    laser_points: ["/scan"]
-    sonar_ranges: ["/p2os/sonar"]
-    bumper_states: ["/p2os/bumper"]
-    map: ["/map"]
-    position: ["/p2os/odom/pose"]
-    motor_current: ["/uc/adc/a0"]
+    dmin: []  # "/emergency_stop/dmin" removed to simulate missing provision
+    laser: []  # "/hokuyo/scan" removed to simulate missing provision
+    sonar: ["/p2os/sonar/ranges"]
+    bumper: ["/p2os/bumper"]  # fake
+    map: []
+    position: ["/p2os/pose/pose/position"]
+    current: ["/uc/adc/a0"]  # fake
+    velocity: ["/p2os/pose/twist/twist/linear/x"]
 
   # constants where no topic is available for publishing the value
   # needed by ROS package (otherwise a topic has to be provided for constants)
-  constant:
-    current_threshold: 2
-    bumper_threshold: 0.5
+  # constant:
+  #   current_th: 2
+  #   bumper_th: 0.5
 
-  # set need (variables that are needed or shared by components)
-  # needed by ROS package (to resolve variable of topics to substitute)
+  # needed variables are provisions that are in use
   need:
-    dmin: ["/dmin"]
+    dmin: ["/emergency_stop/dmin/data"]
 
-  pubrate:
+  # workaround for properties of provisions
+  # TODO: extract from provision_properties
+  accuracy:
+    laser: 0.99
+    sonar: 0.8
+    bumper: 0.1
+    position: 0.7
+    current: 0.5
+    velocity: 0.9
+
+  # workaround for shsa_node.py of shsa_ros
+  # TODO: extract from provision_properties
+  period:
     dmin: 0.1
+
+
+# provision properties
+# - need: true if topic is used/needed
+# - pubrate: publishing rate of the topic
+# - accuracy
+provision_properties:
+
+  # properties below are per provision and shall not be saved to a variable in
+  # the SHSA model, but in a dictionary with key=provision
+
+  "/emergency_stop/dmin/data":
+    need: True
+    pubrate: 10
+    # TODO: accuracy shall be derived
+
+  "/hokuyo/scan/ranges":
+    accuracy: 0.99
+
+  "/p2os/sonar/ranges":
+    accuracy: 0.8
+
+  "/p2os/bumper":  # fake
+    accuracy: 0.1
+
+  "/p2os/pose/pose/position":
+    accuracy: 0.7
+
+  "/uc/adc/a0":  # fake
+    accuracy: 0.5
+
+  "/p2os/pose/twist/twist/linear/x":
+    accuracy: 0.9

@@ -11,13 +11,13 @@ Set parameters ~model (SHSA model).
 """
 
 import sys
-import argparse
 import yaml
 import subprocess
 import networkx as nx
 
 import roslib
 import rospy
+import rostopic
 import actionlib
 import shsa_ros.msg
 
@@ -34,7 +34,7 @@ class Map(object):
     """Translates topic to variable (ROS to model), and vice-versa."""
     def __init__(self, model):
         self.__data = None
-        # get 'provision', 'need' from model
+        # get mappings from model
         try:
             self.__data = nx.get_node_attributes(model, 'provision')
             self.__data.update(nx.get_node_attributes(model, 'need'))
@@ -80,10 +80,10 @@ class SubstituteServer(object):
     def __gen_code(self, s):
         """Generates arguments for the transfer node.
 
-        Returns the input/output topics and the python code to execute. The
-        transfer node executes the code in the form of "y=f(x)". Whereas x is a
-        vector of values received from the input topics incl. field, and y is
-        the value of the output topic incl. field.
+        Returns the input topics and the python code to execute. The transfer
+        node executes the code in the form of "y=f(x)". Whereas x is a vector
+        of values received from the input topics incl. field, and y is the
+        value of the output topic incl. field.
 
         """
         # dfs of substitution tree
@@ -92,7 +92,6 @@ class SubstituteServer(object):
         constants = nx.get_node_attributes(s.model, 'constant')
         inputs = []
         code = "\n"
-        output = self.__map.topic(s.root)
         # read input
         for n in vin:
             if n in constants.keys():
@@ -118,11 +117,9 @@ class SubstituteServer(object):
                 code += ov + " = " + n + "(" + iv + ")\n\n"
         # set output
         code += "y = " + s.root  # assign output
-        # set period from shsa model
-        p = s.model.property_value_of(s.root, 'pubrate')
-        return ",".join(inputs), code, output, p
+        return ",".join(inputs), code
 
-    def __start_transfer_node(self, s):
+    def __start_transfer_node(self, o, s):
         """Creates and starts the transfer node."""
         if s is None or len(s) == 0:
             raise RuntimeError("""Substitution result empty.""")
@@ -134,7 +131,9 @@ class SubstituteServer(object):
         # special keyword/argument for ros to set node name
         cmd += " __name:={}".format(node_name)
         # arguments for inputs, code, outputs, period
-        i, c, o, p = self.__gen_code(s)
+        i, c = self.__gen_code(s)
+        # set period from shsa model
+        p = s.model.property_value_of(s.root, 'period')
         cmd += " -p {}".format(p)
         cmd += " -i \"{}\"".format(i)
         cmd += " -c \"{}\"".format(c)
@@ -149,13 +148,18 @@ class SubstituteServer(object):
         rospy.loginfo("Substitution of '{}' requested.".format(goal.topic))
         try:
             variable = self.__map.variable(goal.topic)
-            s = self.__engine.substitute(variable)
-            self.__result.node = self.__start_transfer_node(s.best())
+            while(self.__engine.substitute(variable)):
+                pass
+            s = self.__engine.last_results()
+            rospy.logdebug("Substitutions found:\n{}".format(s))
+            self.__result.node = self.__start_transfer_node(goal.topic,
+                                                            s.best())
             rospy.loginfo("Substitution of '{}' succeeded.".format(goal.topic))
             self.__server.set_succeeded(self.__result)
         except Exception as e:
             rospy.logwarn("Substitution of '{}' failed. {}".format(goal.topic,
                                                                    e))
+            raise
             self.__server.set_aborted()
 
 
