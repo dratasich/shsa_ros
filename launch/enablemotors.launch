@@ -1,0 +1,6 @@
+<launch>
+  <!-- enable motors (this node will quit after 3s) -->
+  <node name="rostopic_pub_enable_motors"
+	pkg="rostopic" type="rostopic"
+	args="pub /p2os/cmd_motor_state p2os_msgs/MotorState 1 -1" />
+</launch>
