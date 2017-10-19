@@ -2,8 +2,8 @@
 
 Launches SHSA demonstration.
 
-Needs pioneer_teleop and additional_msgs. Source the workspace containing
-general-ros-modules.
+Needs pioneer_teleop, emergency_stop and additional_msgs. Source the workspace
+containing general-ros-modules.
 
 2017-09-25
 Denise Ratasich

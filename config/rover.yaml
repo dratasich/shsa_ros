@@ -8,27 +8,27 @@
 # generate graph from given relations; edges are generated depending on the
 # outputs/functions defined here
 relations:
-  tdl:
+  rdl:
     dmin:
       in: [laser]
       fct: "min(laser)"
-  tds:
+  rds:
     dmin:
       in: [sonar]
       fct: "min(sonar)"
-  tdb:
+  rdb:
     dmin:
       in: [bumper]
       fct: "boolean_and(bumper) * FLOAT_MAX"
-  tdm:
+  rdm:
     dmin:
       in: [position, map]
       fct: "map(position)"
-  tda:
+  rda:
     dmin:
       in: [current, velocity]
       fct: "1 - int(current > velocity)"
-  tpv:
+  rpv:
     velocity:
       in: [position]
       fct: "d position / dt"

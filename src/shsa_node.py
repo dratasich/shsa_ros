@@ -23,7 +23,7 @@ import shsa_ros.msg
 
 # there should be a more appropriate way of including the shsa library
 sys.path.insert(0, "/home/denise/repos/work/research/shsa/shsa/")
-from engine.greedy import Greedy
+from engine.shpgsa import SHPGSA
 
 
 _node_name = 'shsa_node'
@@ -64,7 +64,7 @@ class Map(object):
 
 class SubstituteServer(object):
     def __init__(self, modelfile):
-        self.__engine = Greedy(configfile=modelfile)
+        self.__engine = SHPGSA(configfile=modelfile)
         """SHSA engine."""
         self.__map = Map(self.__engine.model)
         """Mapping ROS topics to SHSA model variables."""
