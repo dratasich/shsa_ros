@@ -1,0 +1,100 @@
+<!--
+
+Launches all nodes for self-localization, opti track and sensors - and logs
+specified topics.
+
+Needs p2os and pioneer_teleop (pkg: general-ros-modules) for moving, amcl and
+map_server for localization (pkg: navigation), mocap_optitrack to get ground
+truth of pose, drivers for the sensors (general-ros-modules on the Pi,
+hokuyo_node on the Jetson TK1). Source the necessary workspaces.
+
+2018-03-16
+Denise Ratasich
+
+-->
+
+<launch>
+  <!-- hostname of your notebook -->
+  <arg name="notebook" default="notebook"/>
+  <!-- default hostname of the robot -->
+  <arg name="robot" default="daisy"/>
+  <!-- ROS distro that should be initialized on the rover -->
+  <arg name="robot-distro" default="indigo"/>
+  <!-- robot's interface to arcos (firmware/driver for motors) -->
+  <arg name="robot-port" default="/dev/ttyTHS1"/>
+  <!-- default hostname of the robot's Raspberry Pi -->
+  <arg name="pi" default="daisy-pi"/>
+  <!-- ROS distro that should be initialized on the Pi -->
+    <arg name="pi-distro" default="kinetic"/>
+  <!-- map -->
+  <arg name="map" default="$(find localization)/config/cpslab-empty.yaml"/>
+  <!-- output -->
+  <arg name="output" default="screen"/>
+
+  <!-- machines -->
+  <machine name="notebook" address="$(arg notebook)" default="true"/>
+  <machine name="robot" address="$(arg robot)"
+	   env-loader="/opt/ros/$(arg robot-distro)/env.sh"/>
+  <machine name="pi" address="$(arg pi)"
+           env-loader="/opt/ros/$(arg pi-distro)/env_pi.bash"/>
+
+  <!-- nodes running on the pi -->
+  <!-- gyroscope -->
+  <node machine="pi" ns="pi" name="imu3000"
+        pkg="imu3000" type="imu3000" output="$(arg output)"/>
+  <!-- accelerometer -->
+  <node machine="pi" ns="pi" name="kxtf9"
+        pkg="kxtf9" type="kxtf9" output="$(arg output)"/>
+  <!-- amperemeter -->
+  <!-- needs FIX -->
+  <!-- <node machine="pi" ns="pi" name="uc" -->
+  <!--       pkg="uc" type="uc_node" output="$(arg output)"/> -->
+
+  <!-- remappings (it does not work inside node) -->
+  <remap from="/p2os/cmd_vel" to="/teleop/cmd_vel"/>
+
+  <!-- nodes running on the robot -->
+  <node machine="robot" ns="p2os" name="p2os_driver"
+        pkg="p2os_driver" type="p2os_driver" output="$(arg output)">
+    <param name="port" value="$(arg robot-port)"/> <!-- interface to arcos -->
+    <param name="pulse" value="1.0" /> <!-- turn annoying beep of -->
+    <param name="use_sonar" value="false"/>
+  </node>
+  <!-- laser scanner -->
+  <node machine="robot" name="laser" pkg="hokuyo_node" type="hokuyo_node"
+        output="$(arg output)">
+    <param name="port" value="/dev/ttyACM0"/>
+  </node>
+
+  <!-- nodes running on the notebook -->
+  <!-- tf base_link - laser -->
+  <node name="tf_baselink2laser" pkg="tf" type="static_transform_publisher"
+        args="0.16 0 0 0 0 0 base_link laser 100"/>
+  <!-- localization -->
+  <node name="amcl" pkg="amcl" type="amcl" output="$(arg output)">
+    <param name="scan" value="/scan"/>
+    <param name="update_min_d" value="0.01"/>
+    <param name="update_min_a" value="0.02"/>
+  </node>
+  <!-- load map -->
+  <node name="map" pkg="map_server" type="map_server"
+        args="$(arg map)" output="$(arg output)"/>
+  <!-- opti track -->
+  <!-- tf world - map (rotate 180°, mirror x axis) -->
+  <node name="tf_world2map" pkg="tf" type="static_transform_publisher"
+        args="0 0 0 3.1415927 0 0 world map 100"/>
+  <include file="$(find mocap_optitrack)/launch/mocap.launch">
+    <arg name="mocap_config_file" value="$(find localization)/config/mocap.yaml"/>
+  </include>
+  <!-- manual control of the rover -->
+  <node name="teleop" pkg="pioneer_teleop" type="keyboard"
+        output="$(arg output)"/>
+  <!-- enable motors (this node will quit after 3s) -->
+  <node name="rostopic_pub_enable_motors"
+        pkg="rostopic" type="rostopic"
+        args="pub /p2os/cmd_motor_state p2os_msgs/MotorState 1 -1"
+        output="$(arg output)"/>
+  <node name="rviz" pkg="rviz" type="rviz"
+        args="-d $(find localization)/config/localize.rviz"
+        output="$(arg output)"/>
+</launch>

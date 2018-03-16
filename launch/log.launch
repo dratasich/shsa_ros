@@ -1,0 +1,41 @@
+<!--
+
+Launches logging of sensors (call after sensors.launch and daisy localized
+itself already).
+
+2018-03-19
+Denise Ratasich
+
+-->
+
+<launch>
+  <arg name="path" default="sensors.csv"/>
+  <arg name="rate" default="10"/>
+
+  <node name="logger" pkg="shsa_ros" type="logger_node.py" output="screen">
+    <param name="path" value="$(arg path)"/>
+    <param name="rate" value="$(arg rate)"/>
+    <rosparam param="topics">
+      {
+      <!-- TODO: orientation quaternions have to be merged to euler (in logger) -->
+      amcl_x: /amcl_pose/pose/pose/position/x,
+      amcl_y: /amcl_pose/pose/pose/position/y,
+      <!-- /amcl_pose/pose/pose/orientation, -->
+      <!-- /daisy/pose/pose/position/x, -->
+      <!-- /daisy/pose/pose/position/y, -->
+      <!-- /daisy/pose/pose/orientation, -->
+      p2os_x: /p2os/pose/pose/pose/position/x,
+      p2os_y: /p2os/pose/pose/pose/position/y,
+      <!-- /p2os/pose/pose/pose/orientation, -->
+      p2os_v: /p2os/pose/twist/twist/linear/x,
+      p2os_w: /p2os/pose/twist/twist/angular/z,
+      imu3000_w: /pi/imu3000/angular_velocity/vector/z,
+      kxtf9_a: /pi/kxtf9/acceleration/vector/y,
+      teleop_v: /teleop/cmd_vel/linear/x,
+      teleop_w: /teleop/cmd_vel/angular/z,
+      <!-- /pioneer_teleop_keyboard/cmd_vel/linear/x, -->
+      <!-- /pioneer_teleop_keyboard/cmd_vel/angular/z, -->
+      }
+    </rosparam>
+  </node>
+</launch>
