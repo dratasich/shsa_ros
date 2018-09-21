@@ -28,10 +28,10 @@ _node_name = 'monitor_node'
 class Monitor(object):
     """Watchdog for a topic."""
 
-    def __init__(self, ac, topic, period):
+    def __init__(self, ac, topic, timeout):
         self.__ac = ac
         self.__topic = topic
-        self.__period = period
+        self.__timeout = timeout
         # subscribe topic
         ttype, tname, _ = rostopic.get_topic_type(topic)
         if ttype is None:
@@ -54,9 +54,9 @@ class Monitor(object):
         if self.__watchdog is not None:
             self.__watchdog.shutdown()
         else:
-            rospy.loginfo("""Monitor '{}': start
-            monitoring.""".format(self.__topic))
-        self.__watchdog = rospy.Timer(rospy.Duration(self.__period*2),
+            rospy.loginfo("""Monitor '{}': start monitoring
+            (timeout={}s).""".format(self.__topic, self.__timeout))
+        self.__watchdog = rospy.Timer(rospy.Duration(self.__timeout),
                                       self.__watchdog_callback)
 
     def __watchdog_callback(self, event):
@@ -121,7 +121,7 @@ if __name__ == '__main__':
         monitors = {}
         for provision in needed:
             rate = properties[provision]['pubrate']
-            monitors[provision] = Monitor(client, provision, 1.0/rate)
+            monitors[provision] = Monitor(client, provision, 5*1.0/rate)
         rospy.loginfo("Monitor node: initialized.")
         # loop
         rospy.spin()

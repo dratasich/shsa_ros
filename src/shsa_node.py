@@ -21,14 +21,16 @@ import rostopic
 import actionlib
 import shsa_ros.msg
 
-# there should be a more appropriate way of including the shsa library
-sys.path.insert(0, "/home/denise/repos/work/research/shsa/shsa/")
+# don't forget to add the shsa library to your PYTHONPATH
 from engine.shpgsa import SHPGSA
 
 
 _node_name = 'shsa_node'
 """Name of this node in the ROS system."""
 
+_goals = []
+"""Save substituted goals to prevent from re-substitution -- though this should
+not be necessary!"""
 
 class Map(object):
     """Translates topic to variable (ROS to model), and vice-versa."""
@@ -107,7 +109,7 @@ class SubstituteServer(object):
             if s.model.is_relation(n):
                 # I/O variables of relation
                 iv = ",".join(t.predecessors(n))  # input
-                ov = t.successors(n)[0]  # output
+                ov = list(t.successors(n))[0]  # output
                 # define relation as function
                 code += "def " + n + "(" + iv + "):\n"
                 code += "    return (" \
@@ -145,7 +147,12 @@ class SubstituteServer(object):
         return node_name
 
     def execute(self, goal):
+        global _goals
         rospy.loginfo("Substitution of '{}' requested.".format(goal.topic))
+        if goal.topic in _goals:
+            self.__server.set_aborted()
+            rospy.logwarn("Another substitution of '{}' aborted.".format(goal.topic))
+            return
         try:
             variable = self.__map.variable(goal.topic)
             while(self.__engine.substitute(variable)):
@@ -156,6 +163,7 @@ class SubstituteServer(object):
                                                             s.best())
             rospy.loginfo("Substitution of '{}' succeeded.".format(goal.topic))
             self.__server.set_succeeded(self.__result)
+            _goals.append(goal.topic)
         except Exception as e:
             rospy.logwarn("Substitution of '{}' failed. {}".format(goal.topic,
                                                                    e))
