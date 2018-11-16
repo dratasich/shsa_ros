@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-"""Monitor node.
+"""Watchdog node.
 
 __author__ = Denise Ratasich
 __date__ = 2017-09-26
@@ -21,7 +21,7 @@ from actionlib_msgs.msg import GoalStatus
 import shsa_ros.msg
 
 
-_node_name = 'monitor_node'
+_node_name = 'watchdog_node'
 """Name of this node in the ROS system."""
 
 
@@ -40,7 +40,7 @@ class Monitor(object):
         tclass = roslib.message.get_message_class(ttype)
         self.__subscriber = rospy.Subscriber(tname, tclass,
                                              self.__msg_callback)
-        rospy.loginfo("Monitor '{}': created.".format(topic))
+        rospy.loginfo("Watchdog '{}': created.".format(topic))
         # monitoring starts when first message is received
         self.__watchdog = None
 
@@ -49,12 +49,12 @@ class Monitor(object):
 
     def __msg_callback(self, msg):
         """Called when a message of the topic is received."""
-        rospy.logdebug("Monitor '{}': Received message.".format(self.__topic))
+        rospy.logdebug("Watchdog '{}': Received message.".format(self.__topic))
         # watchdog restart (unfortunately there is no start/stop)
         if self.__watchdog is not None:
             self.__watchdog.shutdown()
         else:
-            rospy.loginfo("""Monitor '{}': start monitoring
+            rospy.loginfo("""Watchdog '{}': start monitoring
             (timeout={}s).""".format(self.__topic, self.__timeout))
         self.__watchdog = rospy.Timer(rospy.Duration(self.__timeout),
                                       self.__watchdog_callback)
@@ -79,13 +79,13 @@ class Monitor(object):
         # check result
         if finished_on_time:
             if self.__ac.get_state == GoalStatus.SUCCEEDED:
-                rospy.logdebug("""Monitor '{}': SHSA
+                rospy.logdebug("""Watchdog '{}': SHSA
                 successful.""".format(self.__topic))
             else:
-                rospy.logdebug("""Monitor '{}': SHSA did not succeed:
+                rospy.logdebug("""Watchdog '{}': SHSA did not succeed:
                 {}.""".format(self.__topic, state))
         else:
-            rospy.logdebug("""Monitor '{}': SHSA did not finish before
+            rospy.logdebug("""Watchdog '{}': SHSA did not finish before
             timeout.""".format(self.__topic))
 
 
@@ -122,11 +122,11 @@ if __name__ == '__main__':
         for provision in needed:
             rate = properties[provision]['pubrate']
             monitors[provision] = Monitor(client, provision, 5*1.0/rate)
-        rospy.loginfo("Monitor node: initialized.")
+        rospy.loginfo("Watchdog node: initialized.")
         # loop
         rospy.spin()
     except Exception as e:
-        rospy.logerr('Monitor node failed. %s', e)
+        rospy.logerr('Watchdog node failed. %s', e)
         raise
     except rospy.ROSInterruptException:
         pass
