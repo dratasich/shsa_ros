@@ -1,0 +1,10 @@
+<launch>
+  <arg name="modelfile" default="$(find shsa_ros)/config/rover_dmin.pl" />
+  <arg name="variable" default="dmin" />
+
+  <node name="dmin_monitor" pkg="shsa_ros" type="monitor_node.py" output="screen">
+    <param name="model" value="$(arg modelfile)" />
+    <param name="variable" value="$(arg variable)" />
+    <rosparam param="problogpaths">["/root/shsa-problog/model/"]</rosparam>
+  </node>
+</launch>

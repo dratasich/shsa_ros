@@ -59,11 +59,6 @@ Denise Ratasich
   </node>
   <node name="teleop" pkg="pioneer_teleop" type="keyboard" output="screen" />
 
-  <!-- shsa -->
-  <include file="$(find shsa_ros)/launch/shsa.launch">
-    <arg name="modelfile" value="$(find shsa_ros)/config/rover.yaml" />
-  </include>
-
   <!-- enable motors (this node will quit after 3s) -->
   <node name="rostopic_pub_enable_motors"
 	pkg="rostopic" type="rostopic"
