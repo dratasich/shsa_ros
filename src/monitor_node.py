@@ -15,6 +15,9 @@ import rospy
 import rostopic
 import actionlib
 from actionlib_msgs.msg import GoalStatus
+import rosgraph
+import socket
+import subprocess
 
 import shsa_ros.msg
 
@@ -89,7 +92,31 @@ class DataIn(Itom):
         rospy.logdebug("Received [%s]: %f", self.name, self.v)
 
 
+def stop_publishers_to(topic):
+    rospy.loginfo("Monitor node: stop nodes publishing to {} ...".format(topic))
+    # collect publishers to the given topic
+    nodes = []
+    # see also rosnode.py of ros_comm on GitHub
+    # copied from https://github.com/ros/ros_comm/
+    try:
+        master = rosgraph.Master('/rosnode')
+        state = master.getSystemState()
+        pub_topics = master.getPublishedTopics('/')
+    except socket.error:
+        raise ROSNodeIOException("Unable to communicate with master!")
+    # find the list of nodes master's state
+    for t, l in state[0]:
+        if t == topic:
+            nodes = l
+            break
+    # kill each node publishing to the topica via rosnode kill <node>
+    for node in nodes:
+        rospy.loginfo("Monitor node: kill node {}.".format(node))
+        cmd = "rosnode kill {}".format(node)
+        subprocess.Popen(cmd, shell=True)
+
 def trigger_shsa(topic):
+    rospy.loginfo("Monitor node: trigger recovery of {} ...".format(topic))
     # send goal to action server
     goal = shsa_ros.msg.SubstituteGoal(topic=topic)
     _ac.send_goal(goal)
@@ -99,12 +126,12 @@ def trigger_shsa(topic):
     state = _ac.get_state()
     # check result
     if finished_on_time:
-        if _ac.get_state == GoalStatus.SUCCEEDED:
-            rospy.loginfo("""Monitor '{}': SHSA successful.""".format(topic))
+        if state == GoalStatus.SUCCEEDED:
+            rospy.loginfo("""Monitor node: SHSA successful.""".format(topic))
         else:
-            rospy.logwarn("""Monitor '{}': SHSA did not succeed ({}).""".format(topic, state))
+            rospy.logwarn("""Monitor node: SHSA did not succeed ({}).""".format(topic, state))
     else:
-        rospy.logwarn("""Monitor '{}': SHSA did not finish before timeout.""".format(topic))
+        rospy.logwarn("""Monitor node: SHSA did not finish before timeout.""".format(topic))
 
 def task(event):
     # monitor periodically
@@ -118,12 +145,15 @@ def task(event):
     if failed is not None:
         # stop monitoring
         _pub_timer.shutdown()
+        # information about failed itom
+        failed_itom = list(failed.vin)[0].name
+        failed_topic = _data_in[failed_itom]._topic
+        # stop the node producing the wrong data
+        stop_publishers_to(failed_topic)
         # substitute output itom of the substitution
         # (assumption: variable monitored is a needed variable)
-        failed_itom = list(failed.vin)[0].name
-        rospy.logwarn("Monitor node: mismatch detected -> trigger recovery of {} ...".format(failed_itom))
         trigger_shsa(failed_itom)
-        rospy.loginfo("Monitor node: stop.".format(failed_topic))
+        rospy.loginfo("Monitor node: stop.")
 
 
 # main entry point of this node

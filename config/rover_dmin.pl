@@ -22,7 +22,11 @@ function(velocity, rpv, [position, position_last]).
 
 % to create executable substitutions: define implementations of the relations
 implementation(rdl, "dmin.v = min(laser.v.ranges)").
-implementation(rds, "dmin.v = min(sonar.v)").
+implementation(rds, "
+dist = min(sonar.v)
+e = 0.1  # max allowed error of dist
+dmin.v = interval.interval([dist - e, dist + e])
+").
 implementation(rda, "").
 implementation(rdm, "").
 implementation(rdb, "
