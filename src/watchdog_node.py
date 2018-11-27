@@ -79,14 +79,11 @@ class Monitor(object):
         # check result
         if finished_on_time:
             if self.__ac.get_state == GoalStatus.SUCCEEDED:
-                rospy.logdebug("""Watchdog '{}': SHSA
-                successful.""".format(self.__topic))
+                rospy.loginfo("""Watchdog '{}': SHSA successful.""".format(self.__topic))
             else:
-                rospy.logdebug("""Watchdog '{}': SHSA did not succeed:
-                {}.""".format(self.__topic, state))
+                rospy.logwarn("""Watchdog '{}': SHSA did not succeed: {}.""".format(self.__topic, state))
         else:
-            rospy.logdebug("""Watchdog '{}': SHSA did not finish before
-            timeout.""".format(self.__topic))
+            rospy.logwarn("""Watchdog '{}': SHSA did not finish before timeout.""".format(self.__topic))
 
 
 # main entry point of this node
