@@ -16,7 +16,7 @@ The ROS node `monitor_node.py`
 depends on the [shsa-problog library].
 
 Note that the libraries cannot be both in `PYTHONPATH` (name clash).
-We used [docker] containers for the ROS nodes anyway.
+We used [docker containers](https://github.com/dratasich/docker) for the ROS nodes anyway.
 
 
 ## Run
@@ -38,11 +38,12 @@ message can be filled (`goal.topic`).
 ## Demo
 
 This package also includes application launch files,
-e.g., to demonstrate SHSA on the mobile robot [Daisy]().
+e.g., to demonstrate SHSA on the mobile robot
+[Daisy](https://tuw-cpsg.github.io/tutorials/daisy/).
 
 To run the demo you will need additional ROS and python packages.
 
-### Collision Avoidance with Daisy
+### Collision Avoidance with Daisy - Breakdown of the Laser
 
 Get the [shsa library] and install the python packages needed
 (see the `requirements.txt` file).
@@ -55,21 +56,48 @@ Source the catkin workspace containing
 
 Run the application:
 ```bash
-roslaunch shsa_ros rover.launch
+$ roslaunch shsa_ros demo_daisy.launch
 ```
-
+which starts the drivers and the [teleoperation node](https://github.com/tuw-cpsg/general-ros-modules/tree/master/pioneer_teleop) of Daisy.
+Use the keys `w|a|s|d` and `space` to move and stop the robot.
 In case the motors haven't been enabled
-(a start after p2os_driver is necessary),
+(a start after `p2os_driver` is necessary),
 launch `enablemotors.launch`.
 
-Then start the watchdog and SHSA.
+Start the watchdog and self-healing engine with:
 ```bash
-roslaunch shsa_ros shsa.launch
+$ roslaunch shsa_ros demo_breakdown.launch
 ```
 
 When the laser breaks (e.g., switch off the power supply),
 the `watchdog_node` triggers the `shsa_node`
 to substitute the minimum-distance-to-an-obstacle (`dmin`) calculation.
+
+### Collision Avoidance with Daisy - Spoofing Attack
+
+Run the application:
+```bash
+$ roslaunch shsa_ros demo_daisy.launch
+```
+
+Start the self-healing engine with:
+```bash
+$ roslaunch shsa_ros shsa.launch
+```
+
+Start the monitoring exploiting redundancy:
+```bash
+$ roslaunch shsa_ros monitor.launch
+```
+
+When an attacker spoofs wrong laser data to the ROS network, e.g., by:
+```bash
+$ rostopic pub /hokuyo_node/.. ..
+-r 100
+```
+the `monitor_node` triggers the `shsa_node`
+to substitute the minimum-distance-to-an-obstacle (`dmin`) calculation.
+
 
 
 [shsa library]: https://github.com/dratasich/shsa
