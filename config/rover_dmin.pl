@@ -24,7 +24,7 @@ function(velocity, rpv, [position, position_last]).
 implementation(rdl, "dmin.v = min(laser.v.ranges)").
 implementation(rds, "
 dist = min(sonar.v)
-e = 0.1  # max allowed error of dist
+e = 2  # max allowed error of dist
 dmin.v = interval.interval([dist - e, dist + e])
 ").
 implementation(rda, "").

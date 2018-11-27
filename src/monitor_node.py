@@ -18,8 +18,11 @@ from actionlib_msgs.msg import GoalStatus
 import rosgraph
 import socket
 import subprocess
+from interval import interval
 
 import shsa_ros.msg
+import additional_msgs.msg
+import std_msgs.msg
 
 # don't forget to add the shsa problog library to your PYTHONPATH
 from model.monitor import Monitor as SHSAMonitor
@@ -90,6 +93,66 @@ class DataIn(Itom):
         except Exception as e:
             pass
         rospy.logdebug("Received [%s]: %f", self.name, self.v)
+
+
+class Debugger(object):
+    """Extra debug output."""
+
+    def __init__(self, monitor):
+        self.__monitor = monitor
+        self.__monitor.set_debug_callback(self._publish_debug_info)
+        # init publishers for debug output
+        self.__pub_values = []
+        self.__pub_errors = []
+        for i in range(len(S)):
+            self.__pub_values.append(rospy.Publisher(
+                "~value_{}".format(i),
+                additional_msgs.msg.Float32WithVarianceStamped,
+                queue_size=1))
+            self.__pub_errors.append(rospy.Publisher(
+                "~error_{}".format(i),
+                additional_msgs.msg.Float32Stamped,
+                queue_size=1))
+        rospy.loginfo("Monitor node: debugger activated and initialized.")
+
+    def __exit__(self):
+        # close publishers
+        for pub in  self.__pub_values:
+            pub.shutdown()
+        for pub in  self.__pub_errors:
+            pub.shutdown()
+
+    def _publish_debug_info(self, outputs, values, error, failed):
+        """Publish debug information.
+
+        monitor -- monitor object (can be used to retrieve its properties,
+                   e.g., model, domain, used substitutions, etc.)
+        outputs -- dictionary or output itoms per substitution (key is one of
+                   monitor.substitutions)
+        values -- list of outputs[i].v
+        error -- list of error per substitution
+        failed -- substitution with the biggest error (if an error > 0,
+                  otherwise None)
+
+        """
+        # prepare header for messages
+        h = std_msgs.msg.Header()
+        h.stamp = rospy.Time.now()
+        v_msg = additional_msgs.msg.Float32WithVarianceStamped()
+        e_msg = additional_msgs.msg.Float32Stamped()
+        for i, v in enumerate(values):
+            # work with intervals
+            v = interval(v)
+            # publish value with variance (max allowed error)
+            v_msg.header = h
+            v_msg.data = float(v.midpoint[0][0])
+            v_msg.variance = float(v[0][1] - v.midpoint[0][0])
+            self.__pub_values[i].publish(v_msg)
+            # publish error (difference between intervals)
+            e_msg.header = h
+            e_msg.data = float(error[i])
+            self.__pub_errors[i].publish(e_msg)
+        rospy.logdebug("Monitor node: debug callback just published data.")
 
 
 def stop_publishers_to(topic):
@@ -166,7 +229,8 @@ if __name__ == '__main__':
         modelfile = rospy.get_param('~model')
         variable = rospy.get_param('~variable')
         problog_paths = rospy.get_param('~problogpaths')
-        _monitor = SHSAMonitor(modelfile, variable, librarypaths=problog_paths)
+        _monitor = SHSAMonitor(modelfile, variable,
+                               librarypaths=problog_paths)
 
         # collect necessary input topics (itoms from monitor substitutions)
         S = _monitor.substitutions
@@ -175,6 +239,10 @@ if __name__ == '__main__':
             for v in s.vin:
                 _data_in[v.name] = DataIn(v.name)
         rospy.logdebug("data-in: %s", [str(x) for x in _data_in.keys()])
+
+        debug = rospy.get_param('~debug') if rospy.has_param('~debug') else False
+        if debug:
+            debugger = Debugger(_monitor)
 
         # setup action client
         rospy.loginfo("Monitor node: wait for action server (shsa_node) ...")
@@ -195,7 +263,7 @@ if __name__ == '__main__':
                 continue
             break
 
-        rospy.loginfo("Monitor node: Initialization done. Start monitoring.")
+        rospy.loginfo("Monitor node: Start monitoring.")
 
         _pub_timer = rospy.Timer(rospy.Duration(0.1), task)
         """Timer for checking the inputs periodically."""
@@ -204,8 +272,8 @@ if __name__ == '__main__':
         # loop
         rospy.spin()
 
-        r.sleep()
         _pub_timer.shutdown()
+        rospy.sleep(0.5)
     except Exception as e:
         rospy.logerr('Monitor node failed. %s', e)
         raise
