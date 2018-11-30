@@ -101,19 +101,7 @@ $ rqt_plot /emergency_stop/dmin/data /dmin_monitor/value_0/data /dmin_monitor/va
 
 When an attacker spoofs wrong laser data to the ROS network, e.g., by:
 ```bash
-$ rostopic pub /hokuyo/scan sensor_msgs/LaserScan "header:
-  seq: 0
-  stamp: {secs: 0, nsecs: 0}
-  frame_id: ''
-angle_min: 0.0
-angle_max: 0.0
-angle_increment: 0.0
-time_increment: 0.0
-scan_time: 0.0
-range_min: 0.0
-range_max: 0.0
-ranges: [3.0]
-intensities: [0]" -r 100
+$ rostopic pub /hokuyo/scan sensor_msgs/LaserScan "ranges: [3.0]" -r 100
 ```
 the `monitor_node` triggers the `shsa_node`
 to substitute the minimum-distance-to-an-obstacle (`dmin`) calculation.
