@@ -2,10 +2,10 @@
 
 Launches SHSA demonstration.
 
-Needs pioneer_teleop, emergency_stop and additional_msgs. Source the workspace
-containing general-ros-modules.
+Needs pioneer_teleop and emergency_stop.
+Source the workspace containing general-ros-modules.
 
-2017-09-25
+2019-02-18
 Denise Ratasich
 
 -->
@@ -46,18 +46,26 @@ Denise Ratasich
 
 
   <!-- drive control -->
+  <node name="teleop" pkg="pioneer_teleop" type="keyboard" output="screen" />
+  <remap from="/wanderer/scan" to="/hokuyo/scan" />
+  <node name="wanderer" pkg="wanderer" type="wanderer.py" output="screen" />
+  <!-- install mux between teleop and wanderer -->
+  <node name="mux_cmdvel" pkg="topic_tools" type="mux"
+        args="/cmd_vel /teleop/cmd_vel /wanderer/cmd_vel mux:=mux_cmdvel"
+        output="screen" />
+
+  <!-- collision avoidance -->
   <remap from="/dmin_calculator/scan" to="/hokuyo/scan" />
   <remap from="/dmin_calculator/dmin" to="/emergency_stop/dmin" />
   <node name="dmin_calculator" pkg="emergency_stop" type="dmin_calculator.py"
         output="screen" />
-  <remap from="/emergency_stop/cmd_vel_in" to="/teleop/cmd_vel" />
+  <remap from="/emergency_stop/cmd_vel_in" to="/cmd_vel" />
   <remap from="/emergency_stop/cmd_vel_out" to="/p2os/cmd_vel" />
   <node name="emergency_stop" pkg="emergency_stop" type="emergency_stop.py"
         output="screen">
     <param name="dsafe_bottom" value="0.49" />
     <param name="dsafe_top" value="0.51" />
   </node>
-  <node name="teleop" pkg="pioneer_teleop" type="keyboard" output="screen" />
 
   <!-- enable motors (this node will quit after 3s) -->
   <node name="rostopic_pub_enable_motors"
