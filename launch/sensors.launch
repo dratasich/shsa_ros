@@ -25,7 +25,7 @@ Denise Ratasich
   <!-- default hostname of the robot's Raspberry Pi -->
   <arg name="pi" default="daisy-pi"/>
   <!-- ROS distro that should be initialized on the Pi -->
-    <arg name="pi-distro" default="kinetic"/>
+  <arg name="pi-distro" default="kinetic"/>
   <!-- map -->
   <arg name="map" default="$(find localization)/config/cpslab-empty.yaml"/>
   <!-- output -->

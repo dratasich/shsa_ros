@@ -205,7 +205,7 @@ def task(event):
         itoms[k] = Itom(d.name, d.v, timestamp=d.t, variable=d.variable)
     # check
     failed = _monitor.monitor(itoms)
-    if failed is not None:
+    if failed is not None and _ac is not None:
         # stop monitoring
         _pub_timer.shutdown()
         # information about failed itom
@@ -245,10 +245,14 @@ if __name__ == '__main__':
             debugger = Debugger(_monitor)
 
         # setup action client
-        rospy.loginfo("Monitor node: wait for action server (shsa_node) ...")
-        _ac = actionlib.SimpleActionClient('substitute',
-                                           shsa_ros.msg.SubstituteAction)
-        _ac.wait_for_server()  # wait on shsa_node
+        trigger = rospy.get_param('~trigger') if rospy.has_param('~trigger') else True
+        if trigger:
+            rospy.loginfo("Monitor node: wait for action server (shsa_node) ...")
+            _ac = actionlib.SimpleActionClient('substitute',
+                                               shsa_ros.msg.SubstituteAction)
+            _ac.wait_for_server()  # wait on shsa_node
+        else:
+            rospy.loginfo("Monitor node: only monitoring (won't trigger shsa_node).")
 
         rospy.loginfo("Monitor node: initialized.")
 
