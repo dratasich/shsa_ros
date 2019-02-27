@@ -27,6 +27,7 @@ import std_msgs.msg
 # don't forget to add the shsa problog library to your PYTHONPATH
 from model.monitor import Monitor as SHSAMonitor
 from model.itom import Itom, Itoms
+from model.problog_interface import ProblogInterface
 
 
 _node_name = 'monitor_node'
@@ -45,7 +46,7 @@ _ac = None
 class DataIn(Itom):
     """Captures everything to receive and evaluate a message."""
 
-    def __init__(self, topic):
+    def __init__(self, topic, variable):
         """Base constructor.
 
         topic -- The topic including the field to receive.
@@ -61,7 +62,7 @@ class DataIn(Itom):
                                             self._callback)
         """Subscriber to a topic - to receive messages."""
         # init underlying itom with name=topic and a default value
-        super(DataIn, self).__init__(topic, 1.0)
+        super(DataIn, self).__init__(topic, 1.0, variable=variable)
 
     def _get_topic_type(self, topic):
         # get the topic type and function to evaluate the field
@@ -237,7 +238,14 @@ if __name__ == '__main__':
         rospy.loginfo("Monitor node: use %d substitutions", len(S))
         for s in S:
             for v in s.vin:
-                _data_in[v.name] = DataIn(v.name)
+                # get variable to itom mapping from model
+                pli = ProblogInterface()
+                pli.load(modelfile)
+                r = pli.evaluate('query(variableOf("{}",V)).'.format(v))
+                assert len(r) == 1
+                variable = pli.parse_variableOf(r.keys()[0])
+                # init port
+                _data_in[v.name] = DataIn(v.name, variable)
         rospy.logdebug("data-in: %s", [str(x) for x in _data_in.keys()])
 
         debug = rospy.get_param('~debug') if rospy.has_param('~debug') else False
