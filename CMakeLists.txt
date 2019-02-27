@@ -4,6 +4,7 @@ project(shsa_ros)
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
   rospy
+  std_msgs
   actionlib_msgs
   message_generation
 )
@@ -19,6 +20,12 @@ find_package(cmake_modules REQUIRED)
 ################################################
 ## Declare ROS messages, services and actions ##
 ################################################
+
+add_message_files(
+  FILES
+  MonitorDebug.msg
+)
+
 add_action_files(DIRECTORY action FILES
   Substitute.action
 )
@@ -26,6 +33,7 @@ add_action_files(DIRECTORY action FILES
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
+  std_msgs
   actionlib_msgs
 )
 
@@ -41,7 +49,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS
 #  LIBRARIES shsa
-  CATKIN_DEPENDS actionlib_msgs message_runtime
+  CATKIN_DEPENDS std_msgs actionlib_msgs message_runtime
 #  DEPENDS system_lib
 )
 
@@ -60,6 +68,8 @@ include_directories(
 # shsa_node.py
 # transfer_function_node.py
 # monitor_node.py
+# watchdog_node.py
+# logger_node.py
 
 #############
 ## Install ##
@@ -75,6 +85,8 @@ catkin_install_python(PROGRAMS
   src/shsa_node.py
   src/transfer_function_node.py
   src/monitor_node.py
+  src/watchdog_node.py
+  src/logger_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
