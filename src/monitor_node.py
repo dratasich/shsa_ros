@@ -21,7 +21,6 @@ import subprocess
 from interval import interval
 
 import shsa_ros.msg
-import additional_msgs.msg
 import std_msgs.msg
 
 # don't forget to add the shsa problog library to your PYTHONPATH
@@ -102,32 +101,17 @@ class Debugger(object):
     def __init__(self, monitor):
         self.__monitor = monitor
         self.__monitor.set_debug_callback(self._publish_debug_info)
-        # init publishers for debug output
-        self.__pub_values = []
-        self.__pub_errors = []
-        for i in range(len(S)):
-            self.__pub_values.append(rospy.Publisher(
-                "~value_{}".format(i),
-                additional_msgs.msg.Float32WithVarianceStamped,
-                queue_size=1))
-            self.__pub_errors.append(rospy.Publisher(
-                "~error_{}".format(i),
-                additional_msgs.msg.Float32Stamped,
-                queue_size=1))
+        # init publisher
+        self.__pub = rospy.Publisher("~debug", shsa_ros.msg.MonitorDebug,
+                                     queue_size=1)
         rospy.loginfo("Monitor node: debugger activated and initialized.")
 
     def __exit__(self):
-        # close publishers
-        for pub in  self.__pub_values:
-            pub.shutdown()
-        for pub in  self.__pub_errors:
-            pub.shutdown()
+        self.__pub.shutdown()
 
     def _publish_debug_info(self, outputs, values, error, failed):
         """Publish debug information.
 
-        monitor -- monitor object (can be used to retrieve its properties,
-                   e.g., model, domain, used substitutions, etc.)
         outputs -- dictionary or output itoms per substitution (key is one of
                    monitor.substitutions)
         values -- list of outputs[i].v
@@ -137,22 +121,26 @@ class Debugger(object):
 
         """
         # prepare header for messages
-        h = std_msgs.msg.Header()
-        h.stamp = rospy.Time.now()
-        v_msg = additional_msgs.msg.Float32WithVarianceStamped()
-        e_msg = additional_msgs.msg.Float32Stamped()
+        msg = shsa_ros.msg.MonitorDebug()
+        msg.header = std_msgs.msg.Header()
+        msg.header.stamp = rospy.Time.now()
+        # values are intervals -> encode as mean and variance
+        msg.mean = []
+        msg.variance = []
         for i, v in enumerate(values):
-            # work with intervals
+            # be sure to work with intervals
             v = interval(v)
             # publish value with variance (max allowed error)
-            v_msg.header = h
-            v_msg.data = float(v.midpoint[0][0])
-            v_msg.variance = float(v[0][1] - v.midpoint[0][0])
-            self.__pub_values[i].publish(v_msg)
-            # publish error (difference between intervals)
-            e_msg.header = h
-            e_msg.data = float(error[i])
-            self.__pub_errors[i].publish(e_msg)
+            msg.mean.append(float(v.midpoint[0][0]))
+            msg.variance.append(float(v[0][1] - v.midpoint[0][0]))
+        # publish error (difference between intervals)
+        msg.error = list(error)
+        # index of the substitution that failed
+        try:
+            msg.failed = outputs.keys().index(failed)
+        except Exception as e:
+            msg.failed = -1
+        self.__pub.publish(msg)
         rospy.logdebug("Monitor node: debug callback just published data.")
 
 
