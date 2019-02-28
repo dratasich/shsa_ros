@@ -24,6 +24,7 @@ find_package(cmake_modules REQUIRED)
 add_message_files(
   FILES
   MonitorDebug.msg
+  Interval.msg
 )
 
 add_action_files(DIRECTORY action FILES

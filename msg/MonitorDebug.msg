@@ -1,8 +1,9 @@
 Header header
+# topics and timestamps of inputs used
+string[] inputs_name
+float32[] inputs_t
 # outputs of the substitutions (these are intervals)
-# intervals are transformed to mean=midpoint and variance=size(interval)/2
-float32[] mean
-float32[] variance
+Interval[] outputs
 # difference between intervals
 float32[] error
 # index of substitution failed

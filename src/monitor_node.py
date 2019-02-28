@@ -109,9 +109,10 @@ class Debugger(object):
     def __exit__(self):
         self.__pub.shutdown()
 
-    def _publish_debug_info(self, outputs, values, error, failed):
+    def _publish_debug_info(self, inputs, outputs, values, error, failed):
         """Publish debug information.
 
+        itoms -- input itoms to the monitor
         outputs -- dictionary or output itoms per substitution (key is one of
                    monitor.substitutions)
         values -- list of outputs[i].v
@@ -124,16 +125,21 @@ class Debugger(object):
         msg = shsa_ros.msg.MonitorDebug()
         msg.header = std_msgs.msg.Header()
         msg.header.stamp = rospy.Time.now()
-        # values are intervals -> encode as mean and variance
-        msg.mean = []
-        msg.variance = []
-        for i, v in enumerate(values):
+        # save name and timestamp to reference inputs logged in addition
+        msg.inputs_name = []
+        msg.inputs_t = []
+        for n, i in enumerate(inputs.values()):
+            msg.inputs_name.append(i.name)
+            msg.inputs_t.append(i.t)
+        # save output (itoms in the common domain)
+        msg.outputs = [shsa_ros.msg.Interval()]*len(outputs)
+        for n, o in enumerate(outputs.values()):
             # be sure to work with intervals
-            v = interval(v)
-            # publish value with variance (max allowed error)
-            msg.mean.append(float(v.midpoint[0][0]))
-            msg.variance.append(float(v[0][1] - v.midpoint[0][0]))
-        # publish error (difference between intervals)
+            v = interval(o.v)
+            msg.outputs[n].t = i.t
+            msg.outputs[n].bot = v[0][0]
+            msg.outputs[n].top = v[0][1]
+        # save error (difference between intervals)
         msg.error = list(error)
         # index of the substitution that failed
         try:
