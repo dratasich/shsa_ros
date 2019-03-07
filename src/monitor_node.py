@@ -89,7 +89,7 @@ class DataIn(Itom):
             v = getattr(v, field)
         self.v = v
         try:
-            self.t = msg.header.stamp.to_sec()
+            self.t = msg.header.stamp.to_nsec()
         except Exception as e:
             pass
         rospy.logdebug("Received [%s]: %f", self.name, self.v)
@@ -109,13 +109,12 @@ class Debugger(object):
     def __exit__(self):
         self.__pub.shutdown()
 
-    def _publish_debug_info(self, inputs, outputs, values, error, failed):
+    def _publish_debug_info(self, inputs, outputs, error, failed):
         """Publish debug information.
 
-        itoms -- input itoms to the monitor
+        inputs -- input itoms to the monitor
         outputs -- dictionary or output itoms per substitution (key is one of
                    monitor.substitutions)
-        values -- list of outputs[i].v
         error -- list of error per substitution
         failed -- substitution with the biggest error (if an error > 0,
                   otherwise None)
@@ -132,19 +131,22 @@ class Debugger(object):
             msg.inputs_name.append(i.name)
             msg.inputs_t.append(i.t)
         # save output (itoms in the common domain)
-        msg.outputs = [shsa_ros.msg.Interval()]*len(outputs)
-        for n, o in enumerate(outputs.values()):
+        msg.outputs = []
+        for n, o in outputs:  # n ... index of substitution, o ... output itom
+            msgi = shsa_ros.msg.Interval()
             # be sure to work with intervals
             v = interval(o.v)
-            msg.outputs[n].t = i.t
-            msg.outputs[n].bot = v[0][0]
-            msg.outputs[n].top = v[0][1]
+            msgi.t = o.t if o.t is not None else -1
+            msgi.bot = v[0][0]
+            msgi.top = v[0][1]
+            msg.outputs.append(msgi)
         # save error (difference between intervals)
         msg.error = list(error)
         # index of the substitution that failed
         try:
-            msg.failed = outputs.keys().index(failed)
-        except Exception as e:
+            msg.failed = self.__monitor.substitutions.index(failed)
+        except ValueError as e:
+            # failed is None when everything is OK :)
             msg.failed = -1
         self.__pub.publish(msg)
         rospy.logdebug("Monitor node: debug callback just published data.")
